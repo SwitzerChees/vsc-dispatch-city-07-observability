@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: food-delivery-grafana-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  food-delivery.json: |-
+    {
+      "title": "Dispatch City - Distributed System",
+      "uid": "dispatch-city",
+      "schemaVersion": 41,
+      "version": 1,
+      "refresh": "10s",
+      "time": {"from": "now-30m", "to": "now"},
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Active Orders",
+          "gridPos": {"x": 0, "y": 0, "w": 6, "h": 5},
+          "targets": [{"expr": "max(food_delivery_active_orders)", "refId": "A"}],
+          "fieldConfig": {"defaults": {"color": {"mode": "fixedColor", "fixedColor": "yellow"}}}
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Ready Workloads",
+          "gridPos": {"x": 6, "y": 0, "w": 6, "h": 5},
+          "targets": [{"expr": "max(food_delivery_cluster_ready_pods)", "refId": "A"}],
+          "fieldConfig": {"defaults": {"color": {"mode": "fixedColor", "fixedColor": "green"}}}
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Published events per service",
+          "gridPos": {"x": 0, "y": 5, "w": 12, "h": 8},
+          "targets": [{"expr": "sum by (service) (rate(food_delivery_events_published_total[2m]))", "legendFormat": "{{service}}", "refId": "A"}]
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "RabbitMQ queue backlog",
+          "gridPos": {"x": 12, "y": 0, "w": 12, "h": 13},
+          "targets": [{"expr": "rabbitmq_queue_messages_ready", "legendFormat": "{{queue}}", "refId": "A"}]
+        }
+      ]
+    }
