@@ -101,19 +101,3 @@ metadata:
   labels:
     app.kubernetes.io/name: restaurant-worker
     app.kubernetes.io/part-of: food-delivery
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: customer-simulator
-  namespace: food-delivery
-spec:
-  replicas: 3
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: courier-simulator
-  namespace: food-delivery
-spec:
-  replicas: 4

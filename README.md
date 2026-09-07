@@ -1,40 +1,85 @@
-# Block 7 - Observability und Resilience
+# Block 7: Kubernetes im Betrieb
 
-Dieser Integrationsbaustein macht Anwendung und Cluster gemeinsam beobachtbar. Prometheus sammelt Anwendungs-, RabbitMQ-, Kubernetes- und PostgreSQL-Metriken; Grafana und die Systemansicht zeigen denselben realen Zustand aus unterschiedlichen Perspektiven.
+Material zu Arbeitsblatt 07. Dieser Baustein erweitert den funktionierenden
+Projektstand nach AB6. Er ist kein eigenstaendiges Projekt.
 
-## Verwendung im Kurs
+## Kursversion
 
-- Privates Integrationspaket fuer das bestehende Studierenden-Repository
-- Kein neues Abgabe-Repository: Die Aenderungen werden in den fortlaufenden Projektstand uebernommen
-- Fuer einen reproduzierbaren Stand ist der Release `v1.0.0` zu verwenden
-- Die enthaltenen Zugangsdaten sind ausschliesslich fuer das lokale Kurs-Lab bestimmt
+[Release v1.1.0](https://github.com/SwitzerChees/vsc-dispatch-city-07-observability/releases/tag/v1.1.0)
+passt zum aktuellen Arbeitsblatt 07.
+[Kurs-ZIP herunterladen](https://github.com/SwitzerChees/vsc-dispatch-city-07-observability/releases/download/v1.1.0/vsc-dispatch-city-07-observability-v1.1.0.zip).
 
-## Enthalten
+Das angehaengte Kurs-ZIP verwenden, nicht GitHubs automatisch erzeugtes
+"Source code (zip)". Der enthaltene Ordner heisst
+`vsc-dispatch-city-07-observability`; darin liegen `install.sh` und `install.ps1`.
 
-- `cluster-observer` mit namespace-begrenztem Read-only-RBAC
-- ServiceMonitors, PodMonitor und HPA
-- vorkonfiguriertes Grafana-Dashboard
-- RabbitMQ-Prometheus-Plugin und Metrik-Patches
-- Smoke-, Reset- und Failure-Demo-Skripte
-- `scale-city.sh` fuer native Kubernetes-Skalierungsdemos
+## Inhalt
 
-## Arbeitsauftrag
+- Prometheus und Grafana als `kube-prometheus-stack`, Version `88.1.3`.
+- Dashboard "Dispatch City - Betrieb" mit fuenf Anzeigen.
+- Messpunkte fuer Anwendung, RabbitMQ und PostgreSQL.
+- Cluster-Observer mit lesendem, auf `food-delivery` begrenztem RBAC.
+- Kleines NGINX-Lab fuer Readiness, Rollback und HPA in `betrieb-lab`.
 
-1. Monitoring-Stack installieren und den Baustein in Block 6 integrieren.
-2. Golden Signals den vorhandenen Metriken und Panels zuordnen.
-3. Restaurant-Pod entfernen und Self-Healing im Systemdashboard verfolgen.
-4. Last erzeugen und HPA, Queue-Tiefe, Fehlerrate und Latenz korrelieren.
-5. Einen fachlichen und einen technischen Alarm mit konkreter Schwelle formulieren.
-6. Kuriere, Kunden und ein Restaurant skalieren und `desired -> ready -> Stadtfigur/Kuechenmodul` verfolgen.
+Der Einstieg benoetigt Docker Desktop, k3d, kubectl, Helm und Internet.
+AB6 mit CloudNativePG muss bereits laufen. Der Monitoring-Stack ist fuer das
+lokale Kurs-Lab reduziert; feste Zugangsdaten sind nicht fuer Produktion gedacht.
 
-```bash
-CONTEXT=k3d-delivery-lab ./platform/monitoring/install.sh
-kubectl --context k3d-delivery-lab apply -k deploy/overlays/block-07-observability
-CONTEXT=k3d-delivery-lab ./scripts/failure-demo.sh
-CONTEXT=k3d-delivery-lab ./scripts/smoke-test.sh
-CONTEXT=k3d-delivery-lab ./scripts/scale-city.sh couriers 6
-CONTEXT=k3d-delivery-lab ./scripts/scale-city.sh customers 5
-CONTEXT=k3d-delivery-lab ./scripts/scale-city.sh restaurant-pizza 3
+## In das bestehende Projekt integrieren
+
+Entpackten Materialordner neben den Projektordner legen. Alle folgenden Befehle
+im bestehenden Projektordner ausfuehren, jeweils als eigene Zeile.
+
+Windows PowerShell:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+& '..\vsc-dispatch-city-07-observability\install.ps1' -Target '.'
+./platform/monitoring/start-course.ps1
 ```
 
-Abnahme: Alle Prometheus-Targets sind aktiv, das Grafana-Dashboard hat Daten, HPA erhaelt Metriken, Entity-Zahlen folgen echten Replica-Zahlen und die Anwendung erholt sich sichtbar von der Fehlerdemo.
+macOS oder WSL mit Bash:
+
+```bash
+sh ../vsc-dispatch-city-07-observability/install.sh .
+sh platform/monitoring/start-course.sh
+```
+
+Die Integration kopiert nur die Dateien dieses Bausteins. Sie ersetzt weder
+Dashboard noch vorhandene App-Dienste. Der Start baut und importiert das
+Observer-Image, installiert den Helm-Stack und wendet das Block-7-Overlay an.
+Standard: Cluster `teko-k8s`, Kontext `k3d-teko-k8s`.
+
+Grafana in einem eigenen Terminal oeffnen:
+
+```text
+kubectl --context k3d-teko-k8s -n monitoring port-forward service/monitoring-grafana 3000:80
+```
+
+Browser: http://localhost:3000. Anmeldung: `admin` / `delivery`.
+Unter Dashboards "Dispatch City - Betrieb" waehlen. Erste Daten brauchen
+etwa eine Minute. "No data" ist kein Messwert von null.
+
+## Die fuenf Aufgaben
+
+1. Monitoring starten und zwei Anzeigen erklaeren.
+2. Pizza-Worker auf null skalieren, Rueckstau beobachten und auf eins zurueckstellen.
+3. `labs/block-07/web.yaml` anwenden, Readiness-Datei verschieben und wiederherstellen.
+4. Ungueltigen Image-Tag setzen, Events lesen und manuell zurueckrollen.
+5. HPA-Grenze von drei auf vier erhoehen und den begrenzten Lasttest ausfuehren.
+
+Das Arbeitsblatt enthaelt die einzelnen Schritte. Der Lasttest erzeugt 150
+Sekunden CPU-Last in einem Pod, danach endet er selbst. Der HPA nutzt den
+Metrics Server aus k3s. Prometheus ist nicht seine CPU-Datenquelle.
+
+## Erwarteter Endzustand
+
+- Anwendung und PostgreSQL laufen weiter; `restaurant-pizza` hat eine Replica.
+- Grafana zeigt Messwerte, der absichtlich erzeugte Rueckstau hat sich abgebaut.
+- `betrieb-lab/lab-web` laeuft wieder mit dem gueltigen NGINX-Image und zwei
+  bereiten Pods. Der HPA hat min=2, max=4 und CPU-Ziel 50 Prozent.
+- Die eigene `labs/block-07/hpa.yaml` enthaelt ebenfalls maxReplicas=4.
+
+Zur Fehlersuche zuerst `kubectl get pods`, `kubectl describe` und die Logs
+im betroffenen Namespace pruefen. Weitere Demos aus der Referenzimplementation
+sind nicht Teil dieses schlanken Materialpakets.
